@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public class ChatClientApp {
-    private static final String SERVER_IP = "192.168.43.46";
+    private static final String SERVER_IP = "192.168.1.44";
     private static final int SERVER_PORT = 5000;
 
     public ChatClientApp() {
@@ -33,7 +33,7 @@ public class ChatClientApp {
                 Socket socket = new Socket();
 
                 try {
-                    socket.connect(new InetSocketAddress("192.168.43.46", 5000));
+                    socket.connect(new InetSocketAddress(SERVER_IP, 5000));
                     consoleLog("채팅방에 입장하였습니다.");
                     (new ChatWindow(name, socket)).show();
                     PrintWriter pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);

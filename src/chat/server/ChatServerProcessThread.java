@@ -30,13 +30,9 @@ public class ChatServerProcessThread extends Thread{
 
             while(true) {
                 String request = buffereedReader.readLine();
-
-                if( request == null) {
-                    consoleLog("클라이언트로부터 연결 끊김");
-                    doQuit(printWriter);
-                    break;
+                if(request.length()==0){
+                    continue;
                 }
-
                 String[] tokens = request.split(":");
                 if("join".equals(tokens[0])) {
                     doJoin(tokens[1], printWriter);
