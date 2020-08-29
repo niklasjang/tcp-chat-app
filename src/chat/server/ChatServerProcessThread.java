@@ -18,14 +18,14 @@ import java.util.List;
 public class ChatServerProcessThread extends Thread{
     private String nickname = null;
     List<SocketChannel> scList = null;
-
+    private int BUF_SIZE = 1024;
     final SocketChannel socketChannel;
     final SelectionKey selectionKey;
-    ByteBuffer input = ByteBuffer.allocate(1024);
+    ByteBuffer input = ByteBuffer.allocate(BUF_SIZE);
     static final int READING = 0, SENDING = 1;
     int state = READING;
     String clientName = "";
-    Charset charset = Charset.forName("UTF-8");
+    Charset charset = Charset.defaultCharset();
     Selector selector = null;
     public ChatServerProcessThread(
             Selector selector,
@@ -33,7 +33,8 @@ public class ChatServerProcessThread extends Thread{
             List<SocketChannel> scList)
             throws IOException {
         this.selector = selector;
-        socketChannel = c;
+        this.socketChannel = c;
+        this.scList = scList;
         c.configureBlocking(false);
         selectionKey = socketChannel.register(selector, SelectionKey.OP_READ);
         selectionKey.attach(this);
@@ -46,18 +47,19 @@ public class ChatServerProcessThread extends Thread{
         System.out.println("run");
         try {
             while(true) {
-                System.out.println("thread run before");
                 selector.select();
-                System.out.println("thread run after");
                 if(!selectionKey.isReadable())
                     continue;
+                input = ByteBuffer.wrap(new byte[BUF_SIZE]);
+                input.limit(BUF_SIZE);
                 int readCount = socketChannel.read(input);
+                input.flip();
                 if( readCount == 0) {
                     consoleLog("클라이언트로부터 연결 끊김");
                     doQuit(socketChannel);
                     break;
                 }
-                String request = charset.decode(input).toString();
+                String request = new String(input.array() , StandardCharsets.UTF_8);
                 String[] tokens = request.split(":");
                 if("join".equals(tokens[0])) {
                     doJoin(tokens[1], socketChannel);
@@ -80,8 +82,10 @@ public class ChatServerProcessThread extends Thread{
     private void doQuit(SocketChannel sc) throws IOException {
         removeSocketChannel(sc);
 
-        ByteBuffer data = charset.encode(nickname + "님이 퇴장했습니다.");
+        String str = nickname + new String("님이 퇴장했습니다.");
+        ByteBuffer data = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
         broadcast(data);
+        data.clear();
     }
 
     private void removeSocketChannel(SocketChannel sc) {
@@ -91,16 +95,17 @@ public class ChatServerProcessThread extends Thread{
     }
 
     private void doMessage(String data) throws IOException {
-        ByteBuffer byteData = charset.encode(this.nickname + ":" +data);
+        ByteBuffer byteData = ByteBuffer.wrap(data.getBytes(StandardCharsets.UTF_8));
         broadcast(byteData);
+        byteData.clear();
     }
 
     private void doJoin(String nickname, SocketChannel sc) throws IOException {
         this.nickname = nickname;
-
-        ByteBuffer data = charset.encode(nickname + "님이 입장하였습니다.");
+        String str = nickname + new String("님이 입장하였습니다.");
+        ByteBuffer data = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
         broadcast(data);
-
+        data.clear();
         // writer pool에 저장
         addSocketChannel(sc);
     }

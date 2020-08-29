@@ -84,7 +84,7 @@ public class ChatServer {
 //                    if (isWithThreadPool)
 //                        new HandlerWithThreadPool(selector, socketChannel);
 //                    else
-                    new ChatServerProcessThread(selector, socketChannel,scList);
+                    new ChatServerProcessThread(selector, socketChannel,scList).start();
                 }
                 System.out.println("Connection Accepted by Reactor");
             } catch (IOException ex) {

@@ -12,16 +12,13 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 
 public class ChatWindow {
+    private int BUF_SIZE = 1024;
     private String name;
     private Frame frame;
     private Panel pannel;
@@ -99,11 +96,11 @@ public class ChatWindow {
     private void sendMessage() {
         PrintWriter pw;
         try {
-            pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+            OutputStream os = socket.getOutputStream();
             String message = textField.getText();
-            String request = "message:" + message + "\r\n";
-            pw.println(request);
-
+            String request = new String("message:") + message + new String("\r\n");
+            byte[] byteData = request.getBytes();
+            os.write(byteData);
             textField.setText("");
             textField.requestFocus();
         }
@@ -122,8 +119,12 @@ public class ChatWindow {
         public void run() {
             try {
                 BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
+                InputStream is = socket.getInputStream();
+                byte[] byteData = new byte[BUF_SIZE];
+
                 while(true) {
-                    String msg = br.readLine();
+                    is.read(byteData,0,BUF_SIZE);
+                    String msg = new String(byteData);
                     textArea.append(msg);
                     textArea.append("\n");
                 }

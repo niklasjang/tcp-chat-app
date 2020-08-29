@@ -39,8 +39,9 @@ public class ChatClientApp {
                     (new ChatWindow(name, socket)).show();
                     OutputStream os = socket.getOutputStream();
                     String request = new String("join:") + name + new String("\r\n");
-                    byte[] byteData = request.getBytes(StandardCharsets.UTF_8);
+                    byte[] byteData = request.getBytes();
                     os.write(byteData);
+                    os.flush();
                 } catch (UnknownHostException e) {
                     System.err.println("Unknown host: " + SERVER_IP);
                     System.exit(1);
