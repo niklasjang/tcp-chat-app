@@ -7,41 +7,68 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class ChatServerProcessThread extends Thread{
     private String nickname = null;
-    private Socket socket = null;
-    List<PrintWriter> listWriters = null;
+    List<SocketChannel> scList = null;
 
-    public ChatServerProcessThread(Socket socket, List<PrintWriter> listWriters) {
-        this.socket = socket;
-        this.listWriters = listWriters;
+    final SocketChannel socketChannel;
+    final SelectionKey selectionKey;
+    ByteBuffer input = ByteBuffer.allocate(1024);
+    static final int READING = 0, SENDING = 1;
+    int state = READING;
+    String clientName = "";
+    Charset charset = Charset.forName("UTF-8");
+    Selector selector = null;
+    public ChatServerProcessThread(
+            Selector selector,
+            SocketChannel c,
+            List<SocketChannel> scList)
+            throws IOException {
+        this.selector = selector;
+        socketChannel = c;
+        c.configureBlocking(false);
+        selectionKey = socketChannel.register(selector, SelectionKey.OP_READ);
+        selectionKey.attach(this);
+        selectionKey.interestOps(SelectionKey.OP_READ);
+        selector.wakeup();
     }
 
     @Override
     public void run() {
+        System.out.println("run");
         try {
-            BufferedReader buffereedReader =
-                    new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-
-            PrintWriter printWriter = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8));
-
             while(true) {
-                String request = buffereedReader.readLine();
-                if(request.length()==0){
+                System.out.println("thread run before");
+                selector.select();
+                System.out.println("thread run after");
+                if(!selectionKey.isReadable())
                     continue;
+                int readCount = socketChannel.read(input);
+                if( readCount == 0) {
+                    consoleLog("클라이언트로부터 연결 끊김");
+                    doQuit(socketChannel);
+                    break;
                 }
+                String request = charset.decode(input).toString();
                 String[] tokens = request.split(":");
                 if("join".equals(tokens[0])) {
-                    doJoin(tokens[1], printWriter);
+                    doJoin(tokens[1], socketChannel);
                 }
                 else if("message".equals(tokens[0])) {
                     doMessage(tokens[1]);
                 }
                 else if("quit".equals(tokens[0])) {
-                    doQuit(printWriter);
+                    doQuit(socketChannel);
+                }else{
+                    System.out.println("ERROR:" + tokens[0]);
                 }
             }
         }
@@ -50,48 +77,47 @@ public class ChatServerProcessThread extends Thread{
         }
     }
 
-    private void doQuit(PrintWriter writer) {
-        removeWriter(writer);
+    private void doQuit(SocketChannel sc) throws IOException {
+        removeSocketChannel(sc);
 
-        String data = this.nickname + "님이 퇴장했습니다.";
+        ByteBuffer data = charset.encode(nickname + "님이 퇴장했습니다.");
         broadcast(data);
     }
 
-    private void removeWriter(PrintWriter writer) {
-        synchronized (listWriters) {
-            listWriters.remove(writer);
+    private void removeSocketChannel(SocketChannel sc) {
+        synchronized (scList) {
+            scList.remove(sc);
         }
     }
 
-    private void doMessage(String data) {
-        broadcast(this.nickname + ":" + data);
+    private void doMessage(String data) throws IOException {
+        ByteBuffer byteData = charset.encode(this.nickname + ":" +data);
+        broadcast(byteData);
     }
 
-    private void doJoin(String nickname, PrintWriter writer) {
+    private void doJoin(String nickname, SocketChannel sc) throws IOException {
         this.nickname = nickname;
 
-        String data = nickname + "님이 입장하였습니다.";
+        ByteBuffer data = charset.encode(nickname + "님이 입장하였습니다.");
         broadcast(data);
 
         // writer pool에 저장
-        addWriter(writer);
+        addSocketChannel(sc);
     }
 
-    private void addWriter(PrintWriter writer) {
-        synchronized (listWriters) {
-            listWriters.add(writer);
+    private void addSocketChannel(SocketChannel sc) {
+        synchronized (scList) {
+            scList.add(sc);
         }
     }
 
-    private void broadcast(String data) {
-        synchronized (listWriters) {
-            for(PrintWriter writer : listWriters) {
-                writer.println(data);
-                writer.flush();
+    private void broadcast(ByteBuffer data) throws IOException {
+        synchronized (scList) {
+            for(SocketChannel sc : scList) {
+                sc.write(data);
             }
         }
     }
-
     private void consoleLog(String log) {
         System.out.println(log);
     }
