@@ -19,23 +19,18 @@ public class ChatServer {
     public static void main(String[] args) throws IOException {
 
         try {
-            // 1. 서버 소켓 생성
             selector = Selector.open();
             serverSocketChannel = ServerSocketChannel.open();
-            // 2. 바인딩
             serverSocketChannel.bind(new InetSocketAddress("localhost", PORT));
-            // 연결요청 없을 경우 바로 return
             serverSocketChannel.configureBlocking(false);
             SelectionKey selectionKey0 = serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
             selectionKey0.attach(new ChatServer.Acceptor());
 
-            consoleLog("연결 기다림 - "
-                    + serverSocketChannel.getLocalAddress());
-            // 3. 요청 대기
+            consoleLog("연결 기다림 - "+ serverSocketChannel.getLocalAddress());
             try {
                 while (true) {
-                    int numkeys = selector.select();
-                    if( numkeys > 0){
+                    int numKeys = selector.select();
+                    if( numKeys > 0){
                         Set selected = selector.selectedKeys();
                         Iterator it = selected.iterator();
                         while (it.hasNext()) {

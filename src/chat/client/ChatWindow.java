@@ -16,6 +16,7 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Scanner;
 
 public class ChatWindow {
     private int BUF_SIZE = 1024;
@@ -120,9 +121,9 @@ public class ChatWindow {
             try {
                 BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 InputStream is = socket.getInputStream();
-                byte[] byteData = new byte[BUF_SIZE];
-
+                byte[] byteData;
                 while(true) {
+                    byteData = new byte[BUF_SIZE];
                     is.read(byteData,0,BUF_SIZE);
                     String msg = new String(byteData);
                     textArea.append(msg);
