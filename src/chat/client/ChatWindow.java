@@ -77,16 +77,20 @@ public class ChatWindow {
         // Frame
         frame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
-                PrintWriter pw;
+                OutputStream os;
                 try {
-                    pw = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.UTF_8), true);
+                    os = socket.getOutputStream();
                     String request = "quit\r\n";
-                    pw.println(request);
+                    byte[] byteData = request.getBytes();
+                    os.write(byteData);
+                    os.flush();
                     System.exit(0);
                 }
                 catch (IOException e1) {
                     e1.printStackTrace();
                 }
+
+
             }
         });
         frame.setVisible(true);
@@ -125,7 +129,7 @@ public class ChatWindow {
                 while(true) {
                     byteData = new byte[BUF_SIZE];
                     is.read(byteData,0,BUF_SIZE);
-                    String msg = new String(byteData);
+                    String msg = new String(byteData,StandardCharsets.UTF_8);
                     textArea.append(msg);
                     textArea.append("\n");
                 }

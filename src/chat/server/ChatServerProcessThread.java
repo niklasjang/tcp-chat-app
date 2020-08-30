@@ -29,11 +29,10 @@ public class ChatServerProcessThread extends Thread{
     ByteBuffer input = ByteBuffer.allocate(BUF_SIZE);
     Scanner scanner;
     public ChatServerProcessThread(
-            Selector selector,
             SocketChannel c,
             List<SocketChannel> scList)
             throws IOException {
-        this.selector = selector;
+        this.selector = Selector.open();
         this.socketChannel = c;
         this.scList = scList;
         c.configureBlocking(false);

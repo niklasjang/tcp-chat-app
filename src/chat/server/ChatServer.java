@@ -4,17 +4,14 @@ import java.io.Console;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class ChatServer {
     public static final int PORT = 5000;
     public static Selector selector;
     public static ServerSocketChannel serverSocketChannel;
     public boolean isWithThreadPool;
-    public static List<SocketChannel> scList = new ArrayList<SocketChannel>();
+    public static List<SocketChannel> scList = Collections.synchronizedList(new ArrayList<SocketChannel>());
 
     public static void main(String[] args) throws IOException {
 
@@ -27,6 +24,7 @@ public class ChatServer {
             selectionKey0.attach(new ChatServer.Acceptor());
 
             consoleLog("연결 기다림 - "+ serverSocketChannel.getLocalAddress());
+
             try {
                 while (true) {
                     int numKeys = selector.select();
@@ -79,7 +77,7 @@ public class ChatServer {
 //                    if (isWithThreadPool)
 //                        new HandlerWithThreadPool(selector, socketChannel);
 //                    else
-                    new ChatServerProcessThread(selector, socketChannel,scList).start();
+                    new ChatServerProcessThread(socketChannel,scList).start();
                 }
                 System.out.println("Connection Accepted by Reactor");
             } catch (IOException ex) {
