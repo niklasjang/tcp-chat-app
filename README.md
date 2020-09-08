@@ -1,5 +1,7 @@
 # tcp-chat-app
 
+![preview](/assets/run.jpg)
+
 ## Server
 
 Run CharServer.
@@ -15,4 +17,4 @@ Run ChatClientApp.
     - `$ cd tcp-chat-app`  
     - `$ cd tcp-chat-app\out\production\tcp-chat-app`
     - `$ java chat.client.ChatClientApp`
- 
+    
