@@ -22,8 +22,14 @@ public class ChatServerProcessThread extends Thread{
     final List<SocketChannel> scList;
     final SelectionKey selectionKey;
 
-    static final int READING = 0, SENDING = 1;
-    int state = READING;
+    public List<SocketChannel> getScList() {
+        return scList;
+    }
+
+    static final int STATE_READING = 0;
+    static final int STATE_WRITING = 1;
+    static final int STATE_TERMINATING = -1;
+    static int state = STATE_TERMINATING;
     private String nickname = null;
     private int BUF_SIZE = 1024;
     ByteBuffer input = ByteBuffer.allocate(BUF_SIZE);
@@ -35,6 +41,7 @@ public class ChatServerProcessThread extends Thread{
         this.selector = Selector.open();
         this.socketChannel = c;
         this.scList = scList;
+        this.state = STATE_READING;
         c.configureBlocking(false);
         selectionKey = socketChannel.register(selector, SelectionKey.OP_READ);
         selectionKey.attach(this);
@@ -46,16 +53,18 @@ public class ChatServerProcessThread extends Thread{
 
     @Override
     public void run() {
-        System.out.println("run");
+        System.out.println("run :" + Thread.currentThread().getId());
         try {
-            while(true) {
+            while(state != STATE_TERMINATING ) {
                 selector.select();
                 if(!selectionKey.isReadable())
                     continue;
                 scanner = new Scanner(socketChannel, "utf-8");
                 scanner.useDelimiter("\r\n");
+                state = STATE_READING;
                 String request = scanner.nextLine();
                 String[] tokens = request.split(":");
+                state = STATE_WRITING;
                 if("join".equals(tokens[0])) {
                     doJoin(tokens[1], socketChannel);
                 }
@@ -68,8 +77,10 @@ public class ChatServerProcessThread extends Thread{
                     System.out.println("ERROR:" + tokens[0]);
                 }
             }
+            consoleLog("terminate thread in thread");
         }
         catch(IOException e) {
+            e.printStackTrace();
             consoleLog(this.nickname + "님이 채팅방을 나갔습니다.");
         }
     }
@@ -90,10 +101,20 @@ public class ChatServerProcessThread extends Thread{
 
     private void doQuit(SocketChannel sc) throws IOException {
         removeSocketChannel(sc);
-        String str = nickname + new String("님이 퇴장했습니다.");
+
+        String str = "exit";
         ByteBuffer data = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
+        while(data.hasRemaining()){
+            int writeSize = sc.write(data);
+        }
+        data.clear();
+
+        str = nickname + new String("님이 퇴장했습니다.");
+        data = ByteBuffer.wrap(str.getBytes(StandardCharsets.UTF_8));
         broadcast(data);
         data.clear();
+        //de-register from selector
+        selectionKey.cancel();
     }
 
     private void broadcast(ByteBuffer data) throws IOException {
@@ -118,6 +139,9 @@ public class ChatServerProcessThread extends Thread{
     private void removeSocketChannel(SocketChannel sc) {
         synchronized (scList) {
             scList.remove(sc);
+            if(scList.size() == 0){
+                state= STATE_TERMINATING;
+            }
         }
     }
 

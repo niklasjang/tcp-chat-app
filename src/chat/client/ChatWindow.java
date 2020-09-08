@@ -84,7 +84,6 @@ public class ChatWindow {
                     byte[] byteData = request.getBytes();
                     os.write(byteData);
                     os.flush();
-                    System.exit(0);
                 }
                 catch (IOException e1) {
                     e1.printStackTrace();
@@ -103,11 +102,13 @@ public class ChatWindow {
         try {
             OutputStream os = socket.getOutputStream();
             String message = textField.getText();
-            String request = new String("message:") + message + new String("\r\n");
-            byte[] byteData = request.getBytes();
-            os.write(byteData);
-            textField.setText("");
-            textField.requestFocus();
+            if(message.length() != 0){
+                String request = new String("message:") + message + new String("\r\n");
+                byte[] byteData = request.getBytes(StandardCharsets.UTF_8);
+                os.write(byteData);
+                textField.setText("");
+                textField.requestFocus();
+            }
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -126,13 +127,21 @@ public class ChatWindow {
                 BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
                 InputStream is = socket.getInputStream();
                 byte[] byteData;
-                while(true) {
+                while(!Thread.interrupted()) {
                     byteData = new byte[BUF_SIZE];
                     is.read(byteData,0,BUF_SIZE);
                     String msg = new String(byteData,StandardCharsets.UTF_8);
+                    if(byteData[0] == 101
+                            && byteData[1] == 120
+                            && byteData[2] == 105
+                            && byteData[3] == 116){
+                        Thread.currentThread().interrupt();
+                        continue;
+                    }
                     textArea.append(msg);
                     textArea.append("\n");
                 }
+                System.exit(0);
             }
             catch (IOException e) {
                 e.printStackTrace();
